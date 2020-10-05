@@ -1,0 +1,74 @@
+Logstash is an open-source tool that collects, parses, and stores logs for future use and makes rapid log analysis possible. 
+Logstash is useful for both aggregating logs from multiple sources, like a cluster of Docker instances, 
+and parsing them from text lines into a structured format such as JSON. 
+In the ELK Stack, Logstash uses Elasticsearch to store and index logs.
+
+#Installing Java
+Logstash requires the installation of Java 8 or Java 11:
+sudo apt-get install default-jre
+
+#Verify that Java is installed:
+java -version
+
+#If the output of the previous command is similar to this, then you’ll know that you’re heading in the right direction:
+openjdk version "1.8.0_191"
+OpenJDK Runtime Environment (build 1.8.0_191-8u191-b12-2ubuntu0.16.04.1-b12)
+OpenJDK 64-Bit Server VM (build 25.191-b12, mixed mode)
+
+#Install Logstash with:
+sudo apt-get install logstash
+
+#Create a Logstash configuration file:
+sudo vim /etc/logstash/conf.d/apache-01.conf
+
+#Enter the following configuration:
+input {  
+file {    
+path => "/home/ubuntu/apache-daily-access.log"  
+start_position => "beginning"  
+sincedb_path => "/dev/null"  
+}
+}
+
+filter {  
+grok {    
+match => { "message" => "%{COMBINEDAPACHELOG}" 
+}  
+}  
+
+date {    
+match => [ "timestamp" , "dd/MMM/yyyy:HH:mm:ss Z" ]  
+}  
+
+geoip {    
+source => "clientip"  
+}
+}
+
+output {  
+elasticsearch {   
+hosts => ["localhost:9200"]   
+}
+}
+
+
+This file is telling Logstash to collect the local /home/ubuntu/apache-daily-access.log file and send it to Elasticsearch for indexing.
+The input section specifies which files to collect (path) and what format to expect. 
+The filter section is telling Logstash how to process the data using the grok, date and geoip filters. 
+The output section defines where Logstash is to ship the data to – in this case, a local Elasticsearch.
+
+Note :- Production tip: Running Logstash and Elasticsearch is a very common pitfall of the ELK stack and often causes servers to fail in production. 
+
+
+#Finally, start Logstash to read the configuration:
+sudo service logstash start
+
+#To make sure the data is being indexed, use:
+sudo curl -XGET 'localhost:9200/_cat/indices?v&pretty'
+
+#You should see your new Logstash index created:
+health status index                      uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+yellow open   logstash-2019.04.16-000001 rfA5aGYBTP6j27opDwD8VA   1   1          4168            0       230b           230b
+
+
+
