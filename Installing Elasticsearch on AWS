@@ -1,0 +1,62 @@
+Installing Elasticsearch
+
+#To begin the process of installing Elasticsearch, add the following repository key:
+wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+
+#Install the apt-transport-https package:
+sudo apt-get install apt-transport-https
+
+#Add the following Elasticsearch list to the key:
+echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+
+#To install a version of Elasticsearch that contains only features licensed under Apache 2.0, use:
+echo "deb https://artifacts.elastic.co/packages/oss-7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+
+#Update your system and install Elasticsearch with:
+sudo apt-get update && sudo apt-get install elasticsearch
+
+#Open the Elasticsearch configuration file at: 
+/etc/elasticsearch/elasticsearch.yml, and apply the following configurations:
+
+network.host: "localhost"
+http.port: 9200
+cluster.initial_master_nodes: ["<PrivateIP"]
+
+#Start the Elasticsearch service:
+sudo service elasticsearch start
+
+#Verify the installation by cURLing:
+sudo curl http://localhost:9200
+
+#If the output is similar to this, then you will know that Elasticsearch is running properly:
+{ 
+"name" : "ip-172-31-49-60", 
+"cluster_name" : "elasticsearch", 
+"cluster_uuid" : "yP0uMKA6QmCsXQon-rxawQ", 
+"version" : 
+{   
+"number" : "7.0.0",   
+"build_flavor" : "default",   
+"build_type" : "deb",   
+"build_hash" : "b7e28a7",   
+"build_date" : "2019-04-05T22:55:32.697037Z",   
+"build_snapshot" : false,   
+"lucene_version" : "8.0.0",   
+"minimum_wire_compatibility_version" : "6.7.0",   
+"minimum_index_compatibility_version" : "6.0.0-beta1" }, 
+"tagline" : "You Know, for Search"
+}
+
+#To make the service start on boot run:
+sudo update-rc.d elasticsearch defaults 95 10
+
+Note:-  Production tip: DO NOT open any other ports, like 9200, to the world! 
+There are many bots that search for 9200 and execute groovy scripts to overtake machines. 
+DO NOT bind Elasticsearch to a public IP.
+
+
+
+
+
+
+
