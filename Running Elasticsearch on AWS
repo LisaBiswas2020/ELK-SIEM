@@ -1,0 +1,101 @@
+Running Elasticsearch on AWS
+
+Part I - Provisioning EC2 Instances
+
+AWS is a convenient way to provision and scale machine resources in response to changing business requirements. 
+Elasticsearch takes advantage of EC2's on-demand machine architecture enabling the addition and removal of EC2 instances and 
+corresponding Elasticsearch nodes as capacity and performance requirements change.
+
+Step 1: Choose an Amazon Machine Image (AMI)
+
+Elasticsearch runs on various operating systems such as CentOS, Redhat, Ubuntu, and Amazon Linux. 
+Suggest using the latest Amazon Linux AMI — "Amazon Linux AMI 2016.03.0 (HVM), SSD Volume Type".
+
+Step 2: Choose an Instance Type
+
+A reasonable starting instance type is m3.2xlarge which provides 8 vCPUs, 30 GiB of memory, 2 x 80 GB SSD drives and comes with High Network Performance. 
+Solid State Drives are preferred as indexing is IO intensive and High Network Performance is essential for cluster performance and reliability.
+M3.2xlarge is a baseline recommendation. To determine whether it is an appropriate choice, 
+you should benchmark your solution to determine whether it meets performance and scaling requirements.
+Click the "Next: Configure Instance Details" button.
+
+Step 3: Configure Instance Details
+
+Each Elasticsearch node will run on its own dedicated EC2 instance, so set the number of instances to 3.
+Note that any AWS accounts that have been created after December 4, 2013 only support EC2-VPC, 
+so the "Network" option for picking "Launch into EC2-Classic" won't be available for those users and should not be enabled anyway.
+Selecting "Enable termination protection" is a good idea as it prevents accidental deletion of nodes and their data.
+Leave the default values for remaining fields and click the "Next: Add Storage" button.
+
+Step 4: Add Storage
+
+Let's leave the storage Size at 8 GiB. If you happen to know your index storage requirements at this time, 
+you can adjust the storage now. Leave the Volume Type set to General Purpose SSD.
+Click the "Next: Tag Instance" button.
+
+Step 5: Tag Instance
+
+In this field, provide a key and value pair, for example "name" and "esonaws", to make it easy to recall the ec2 instances.
+Click the "Next: Configure Security Group" button.
+
+Step 6: Configure Security Group
+
+This configuration panel allows you to configure a set of firewall rules for accessing your instance.
+By default, Elasticsearch exposes TCP port 9200 for REST API access and TCP port 9300 for internal cluster communication. 
+Consider adding rules to allow connecting to TCP port 9200 from desired subnets, typically private subnets, and TCP port 9300 from the subnets where Elasticsearch nodes live. 
+If you plan to change the default port settings in elasticsearch.yml, configure rules for those ports rather than TCP ports 9200 and 9300.
+Also, add a rule to allow SSH connections on port 22, so you can connect to the instance in the later steps.
+Click The "Review and Launch" button.
+
+Step 7: Review Instance Launch
+
+Note any warnings and review the Instance Launch settings and click the "Launch" button when ready.
+
+At this point you will be prompted to provide a key pair or create a new key pair.
+
+This is necessary to enable SSH access to the EC2 instance.
+If you need help setting up a key pair the Amazon EC2 Key Pairs article provides an overview and instructions for creating new new key pairs.
+Start up the EC2 instances and take note of the assigned private IP addresses which we will use in a following step.
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Netx :- Part II - Installing Elasticsearch
+RPM
+Log into each EC2 instance via SSH.
+$ ssh -v -i /pathto/[certfilename].pem ec2-user@[ec2hostname]
+
+Then install the Elasticsearch RPM package on each EC2 instance as instructed below.
+$ sudo rpm -i 
+https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution/rpm/elasticsearch/2.3.3/elasticsearch-2.3.3.rpm
+
+Other versions of Elasticsearch are available here. Refer to the guide if you prefer installing with yum.
+(https://www.elastic.co/downloads/elasticsearch)
+Register Elasticsearch as a system service.
+$ sudo chkconfig --add elasticsearch
+
+Install Plugins
+You need to install AWS cloud plugin on each EC2 instance in the cluster.
+$ cd /usr/share/elasticsearch/ 
+$ sudo bin/plugin install cloud-aws
+
+
+Configure Elasticsearch
+The maximum JVM heap size should be based upon the machine's memory. 
+Open "/etc/sysconfig/elasticsearch" on each EC2 instance with your favorite editor and set the "ES_HEAP_SIZE" and "MAX_LOCKED_MEMORY" parameters. 
+The following configuration will fit a m3.2xlarge instance. The "ES_HEAP_SIZE" is recommended to be half of the memory but not more than 32GB.
+
+ES_HEAP_SIZE=15g 
+MAX_LOCKED_MEMORY=unlimited
+
+
+Open "/etc/elasticsearch/elasticsearch.yml" on every machine and edit the following settings.
+cluster.name:esonaws 
+bootstrap.mlockall: true 
+discovery.zen.ping.unicast.hosts: [_ip_address_,…] 
+network.host: [_ip_address_]
+
+
+"discovery.zen.ping.unicast.hosts" is a list of EC2 instance private IP addresses. All the master-eligible nodes must be listed. 
+In a small cluster all nodes can be configured as both master nodes and data nodes. 
+"network.host" is the EC2 instance private IP address of this host that is shared with the other nodes in the cluster.
+
+The IP address is not required for a single node cluster. "_site_" and "_local_" represent the private address and the local loopback address "127.0.0.1" and allow access to those from remote.
