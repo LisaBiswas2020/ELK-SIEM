@@ -1,0 +1,163 @@
+Installing Filebeat on AWS EC2 instance
+
+install Filebeat on each system you want to monitor
+specify the location of your log files
+parse log data into fields and send it to Elasticsearch
+visualize the log data in Kibana
+
+You need Elasticsearch for storing and searching your data, and Kibana for visualizing and managing it.
+
+Step 1:- 
+#Install Filebeat on all the servers you want to monitor.
+To download and install Filebeat, use the commands that work with your system:
+
+1.DEB
+curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.9.2-amd64.deb
+sudo dpkg -i filebeat-7.9.2-amd64.deb
+
+2.RPM
+curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.9.2-x86_64.rpm
+sudo rpm -vi filebeat-7.9.2-x86_64.rpm
+
+3.Linux
+curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.9.2-linux-x86_64.tar.gz
+tar xzvf filebeat-7.9.2-linux-x86_64.tar.gz
+
+4.Windows
+Download the Filebeat Windows zip file from the downloads page.(https://www.elastic.co/downloads/beats/filebeat)
+Extract the contents of the zip file into C:\Program Files.
+Rename the filebeat-<version>-windows directory to Filebeat.
+Open a PowerShell prompt as an Administrator (right-click the PowerShell icon and select Run As Administrator).
+From the PowerShell prompt, run the following commands to install Filebeat as a Windows service:
+
+PS > cd 'C:\Program Files\Filebeat'
+PS C:\Program Files\Filebeat> .\install-service-filebeat.ps1
+
+Note :- (For Windows) 
+If script execution is disabled on your system, you need to set the execution policy for the current session to allow the script to run. 
+For example: PowerShell.exe -ExecutionPolicy UnRestricted -File .\install-service-filebeat.ps1.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Step 2 :- Connections to Elasticsearch and Kibana are required to set up Filebeat.
+Set the connection information in filebeat.yml. To locate this configuration file, see Directory layout.(https://www.elastic.co/guide/en/beats/filebeat/current/directory-layout.html)
+
+Specify the cloud.id of your Elasticsearch Service, and set cloud.auth to a user who is authorized to set up Filebeat. 
+For example: (https://www.elastic.co/guide/en/beats/filebeat/7.9/configure-cloud-id.html)
+cloud.id: "staging:dXMtZWFzdC0xLmF3cy5mb3VuZC5pbyRjZWM2ZjI2MWE3NGJmMjRjZTMzYmI4ODExYjg0Mjk0ZiRjNmMyY2E2ZDA0MjI0OWFmMGNjN2Q3YTllOTYyNTc0Mw=="
+cloud.auth: "filebeat_setup:YOUR_PASSWORD" 
+
+---
+This examples shows a hard-coded password, but you should store sensitive values in the secrets keystore.
+(https://www.elastic.co/guide/en/beats/filebeat/7.9/keystore.html)
+
+Note :- 
+You can send data to other outputs, such as Logstash, but that requires additional configuration and setup.
+(https://www.elastic.co/guide/en/beats/filebeat/current/configuring-output.html)
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Step 3:- Filebeat uses modules to collect and parse log data.
+
+Identify the modules you need to enable. To see a list of available modules, run:
+1.Deb :- filebeat modules list
+2.RPM :- filebeat modules list
+3.Linux :-  ./filebeat modules list
+4. Windows :- PS > .\filebeat.exe modules list
+
+From the installation directory, enable one or more modules. For example, the following command enables the system, nginx, and mysql module configs:
+1. Deb :- filebeat modules enable system nginx mysql
+2. RPM :- filebeat modules enable system nginx mysql
+3. Linux :-./filebeat modules enable system nginx mysql
+4. Wndows :- PS > .\filebeat.exe modules enable system nginx mysql
+
+In the module configs under modules.d, change the module settings to match your environment.
+For example, log locations are set based on the OS. If your logs aren’t in default locations, set the paths variable:
+- module: nginx
+  access:
+    var.paths: ["/var/log/nginx/access.log*"] 
+  (https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-modules.html)
+  (https://www.elastic.co/guide/en/beats/filebeat/current/configuring-howto-filebeat.html)
+  (https://www.elastic.co/guide/en/beats/libbeat/7.9/config-file-format.html)
+  filebeat.reference.yml: This reference configuration file shows all non-deprecated options. You’ll find it in the same location as filebeat.yml.
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  
+  Step 4:- Filebeat comes with predefined assets for parsing, indexing, and visualizing your data. To load these assets:
+  
+  Make sure the user specified in filebeat.yml is authorized to set up Filebeat.
+  (https://www.elastic.co/guide/en/beats/filebeat/current/privileges-to-setup-beats.html)
+  From the installation directory, run:
+  1. Deb :- filebeat setup -e
+  2. RPM :- filebeat setup -e
+  3. Linux :-./filebeat setup -e
+  4. Windows :-  PS > .\filebeat.exe setup -e 
+ (-e is optional and sends output to standard error instead of the configured log output.)
+ 
+ This step loads the recommended index template for writing to Elasticsearch and deploys the sample dashboards for visualizing the data in Kibana.
+ (https://www.elastic.co/guide/en/elasticsearch/reference/7.9/indices-templates.html)
+ This step does not load the ingest pipelines used to parse log lines. 
+ By default,ingest pipelines are set up automatically the first time you run the module and connect to Elasticsearch.
+ 
+ 
+A connection to Elasticsearch (or Elasticsearch Service) is required to set up the initial environment. If you’re using a different output, such as Logstash, see:
+Load the index template manually (https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-template.html#load-template-manually)
+Load Kibana dashboards (https://www.elastic.co/guide/en/beats/filebeat/current/load-kibana-dashboards.html)
+Load ingest pipelines (https://www.elastic.co/guide/en/beats/filebeat/current/load-ingest-pipelines.html)
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Step 5:- Start Filebeat 
+Before starting Filebeat, modify the user credentials in filebeat.yml and specify a user who is authorized to publish events.
+(https://www.elastic.co/guide/en/beats/filebeat/current/privileges-to-publish-events.html)
+To start Filebeat, run:
+1. Deb :- sudo service filebeat start
+2. RPM :- sudo service filebeat start
+3. Linux :-sudo chown root filebeat.yml 
+           sudo chown root modules.d/system.yml 
+           sudo ./filebeat -e
+           (You’ll be running Filebeat as root, so you need to change ownership of the configuration file and any configurations enabled in the modules.d directory, 
+           or run Filebeat with --strict.perms=false specified.)
+4. Windows :- PS C:\Program Files\filebeat> Start-Service filebeat
+              (By default, Windows log files are stored in C:\ProgramData\filebeat\Logs.)
+Filebeat should begin streaming events to Elasticsearch.
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Step 6 :- View your data in Kibana
+Filebeat comes with pre-built Kibana dashboards and UIs for visualizing log data. We loaded the dashboards earlier when you ran the setup command. 
+To open the dashboards:
+-Log in to your Elastic Cloud account. (https://cloud.elastic.co/login?redirectTo=%2Fhome)
+-Navigate to the Kibana endpoint in your deployment.
+-In the side navigation, click Discover. To see Filebeat data, make sure the predefined filebeat-* index pattern is selected.
+(If you don’t see data in Kibana, try changing the time filter to a larger range. By default, Kibana shows the last 15 minutes.)
+-In the side navigation, click Dashboard, then select the dashboard that you want to open.
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Now that we have our logs streaming into Elasticsearch, learn how to unify your logs, metrics, uptime, and application performance data.
+1.Ingest data from other sources by installing and configuring other Elastic Beats:
+
+Elastic Beats	-----To capture
+Metricbeat--------- Infrastructure metrics
+Winlogbeat----------Windows event logs
+Heartbeat-----------Uptime information
+APM-----------------Application performance metrics
+Auditbeat-----------Audit events
+
+2. Use the Observability apps in Kibana to search across all your data:
+
+Elastic apps	        Use to
+
+Metrics app           Explore metrics about systems and services across your ecosystem
+Logs app              Tail related log data in real time
+Uptime app            Monitor availability issues across your apps and services
+APM app               Monitor application performance
+SIEM app              Analyze security events
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+                
+
+ 
+
+  
+  
+
+
+
+
