@@ -1,0 +1,41 @@
+Installing Kibana
+
+Kibana is an open-source data visualization plugin for Elasticsearch. 
+It provides visualization capabilities on top of the content indexed on an Elasticsearch cluster. 
+Users can create bar, line, and scatter plots; pie charts; and maps on top of large volumes of data.
+
+Among other uses, Kibana makes working with logs super easy and even fun, and its graphical web interface lets beginners execute powerful log searches.
+
+#To install Kibana, use this command:
+sudo apt-get install kibana
+
+#Open the Kibana configuration file and enter the following configurations:
+sudo vim /etc/kibana/kibana.yml
+
+server.port: 5601
+server.host: "localhost"
+elasticsearch.hosts: ["http://localhost:9200"]
+
+#Start Kibana:
+sudo service kibana start
+
+#Test:
+Point your browser to ‘http://YOUR_ELASTIC_IP:5601’ after Kibana is started (this may take a few minutes).
+
+#Your next step in Kibana is to define an Elasticsearch index pattern.
+
+What does an “index pattern” mean, and why do we have to configure it? 
+Logstash creates a new Elasticsearch index (database) every day. 
+The names of the indices look like this: logstash-YYYY.MM.DD
+for example, “logstash-2020.10.05” for the index we created above on October 05, 2020.
+
+Kibana works on top of these Elasticsearch indices, so it needs to know which one you want to use. 
+Go to Management -> Kibana Index Patterns. 
+Kibana automatically identifies the Logstash index, so all you have to do is define it with ‘logstash-*:
+
+In the next step, we will select the @timestamp timestamp field, and then click the “Create index pattern” button to define the pattern in Kibana.
+
+Note :- Production tip: In this tutorial, we are accessing Kibana directly through its application server on port 5601, but in a production environment 
+you might want to put a reverse proxy server, like Nginx, in front of it.
+
+To see your logs, go to the Discover page in Kibana:
